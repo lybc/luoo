@@ -2,7 +2,6 @@
 import requests
 import bs4
 import json
-import time
 import argparse
 import os
 
@@ -10,7 +9,7 @@ class luoo:
     BASE_URL = "http://www.luoo.net/tag/?p={p}"
     LUOO_URL = "http://www.luoo.net/music/{vol}"
     MP3_URL = "http://luoo-mp3.kssws.ks-cdn.com/low/luoo/radio{vol}/{music}.mp3"
-    MUSIC_NAME = "{name}.mp3"
+    MUSIC_NAME = "{name}-[{singer}].mp3"
 
 
     def get_musics(self):
@@ -65,6 +64,7 @@ class luoo:
             os.chdir(vol_title)
         print(u"正在下载第{v_num}期. {v_title}".format(v_num=vol_num, v_title=vol_title))
         for music in musics:
+            author = music.find_next_sibling("span",class_="artist").get_text()
             music_name = music.get_text()
             music_num = music_name.split(".")[0]
             r = requests.get(self.MP3_URL.format(vol=v, music=music_num), stream=True)
@@ -72,7 +72,7 @@ class luoo:
                 r = requests.get(self.MP3_URL.format(vol=v, music=int(music_num)), stream=True)
             print(u"正在下载: {} --- {}".format(music_name, r.status_code))
             r.encoding = "utf-8"
-            with open(self.MUSIC_NAME.format(name=music_num), "wb") as fd:
+            with open(self.MUSIC_NAME.format(name=music_num, singer=author), "wb") as fd:
                 fd.write(r.content)
                 fd.close()
 
