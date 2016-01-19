@@ -2,11 +2,15 @@
 import requests
 import bs4
 import json
+import time
+import argparse
+import os
 
 class luoo:
     BASE_URL = "http://www.luoo.net/tag/?p={p}"
     LUOO_URL = "http://www.luoo.net/music/{vol}"
     MP3_URL = "http://luoo-mp3.kssws.ks-cdn.com/low/luoo/radio{vol}/{music}.mp3"
+    MUSIC_NAME = "{name}.mp3"
 
 
     def get_musics(self):
@@ -35,7 +39,6 @@ class luoo:
                         'author': author,
                         'mp3': music_url
                     }
-                    print(music_name, author, music_url)
                 data[vol_number] = {
                     "vol": vol_number,
                     "title": vol.get_text(),
@@ -44,11 +47,43 @@ class luoo:
                 }
         file = open("luoo.json", "w")
         file.write(json.dumps(data))
+        file.close()
 
 
+
+    def get_song_list(self, v):
+        r = requests.get(self.LUOO_URL.format(vol=v))
+        r.encoding = "utf-8"
+        res = bs4.BeautifulSoup(r.content, "html.parser")
+        vol_num = res.find("span", class_="vol-number").get_text()
+        vol_title = res.find("span", class_="vol-title").get_text()
+        musics = res.find_all("a", class_="trackname")
+        if not os.path.exists(vol_title):
+            os.makedirs(vol_title)
+            os.chdir(vol_title)
+        print(u"正在下载第{v_num}期. {v_title}".format(v_num=vol_num, v_title=vol_title))
+        for music in musics:
+            music_name = music.get_text()
+            print(u"正在下载: {}".format(music_name))
+            music_num = music_name.split(".")[0]
+            r = requests.get(self.MP3_URL.format(vol=v, music=music_num), stream=True)
+            r.encoding = "utf-8"
+            with open(self.MUSIC_NAME.format(name=music_name), "wb") as fd:
+                for chunk in r.iter_content():
+                    fd.write(chunk)
+                fd.close()
 
 
 
 
 luoo = luoo()
-luoo.get_musics()
+parser = argparse.ArgumentParser()
+parser.add_argument("-vol", type=int, nargs='+')
+parser.add_argument("-m", type=int, nargs='+')
+args = parser.parse_args()
+if args.vol is not None and len(args.vol) == 1:
+    luoo.get_song_list(args.vol[0])
+elif args.m is not None and len(args.vol) == 1:
+    pass
+
+# luoo.get_musics()
