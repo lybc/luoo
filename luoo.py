@@ -61,16 +61,19 @@ class luoo:
         if not os.path.exists(vol_title):
             os.makedirs(vol_title)
             os.chdir(vol_title)
+        else:
+            os.chdir(vol_title)
         print(u"正在下载第{v_num}期. {v_title}".format(v_num=vol_num, v_title=vol_title))
         for music in musics:
             music_name = music.get_text()
-            print(u"正在下载: {}".format(music_name))
             music_num = music_name.split(".")[0]
             r = requests.get(self.MP3_URL.format(vol=v, music=music_num), stream=True)
+            if r.status_code == 404:
+                r = requests.get(self.MP3_URL.format(vol=v, music=int(music_num)), stream=True)
+            print(u"正在下载: {} --- {}".format(music_name, r.status_code))
             r.encoding = "utf-8"
-            with open(self.MUSIC_NAME.format(name=music_name), "wb") as fd:
-                for chunk in r.iter_content():
-                    fd.write(chunk)
+            with open(self.MUSIC_NAME.format(name=music_num), "wb") as fd:
+                fd.write(r.content)
                 fd.close()
 
 
