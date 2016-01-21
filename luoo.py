@@ -11,6 +11,9 @@ import logging
 
 
 class luoo:
+    """
+    批量下载落网音乐脚本
+    """
     BASE_URL = "http://www.luoo.net/tag/?p={p}"
     LUOO_URL = "http://www.luoo.net/music/{vol}"
     MP3_URL = "http://luoo-mp3.kssws.ks-cdn.com/low/luoo/radio{vol}/{music}.mp3"
@@ -59,7 +62,12 @@ class luoo:
 
 
     def get_song_list(self, v):
-        r = requests.get(self.LUOO_URL.format(vol=v))
+        try:
+            r = requests.get(self.LUOO_URL.format(vol=v))
+        except:
+            # 网络错误写日志
+            logging.warning("Connect Error: {}".format(self.LUOO_URL.format(vol=v)))
+            return
         r.encoding = "utf-8"
         res = bs4.BeautifulSoup(r.content, "html.parser")
         vol_num = res.find("span", class_="vol-number").get_text()
@@ -85,12 +93,24 @@ class luoo:
             except e:
                 logging.warning("error: {}".format(music_name))
                 continue
-            print(u"正在下载: {} --- {}".format(music_name, r.status_code))
+            print(u"正在下载: {} --- {}".format(music_num, r.status_code))
             r.encoding = "utf-8"
             with open(self.MUSIC_NAME.format(name=music_num), "wb") as fd:
                 fd.write(r.content)
                 fd.close()
         os.chdir("../")
+
+    def get_song(self, v, m):
+        url = self.MP3_URL.format(vol=v, music=m)
+        r = requests.get(url, stream=True)
+        r.encoding = "utf-8"
+        with open("{}.mp3".format(m), "wb") as file:
+            file.write(r.content)
+            file.close()
+        if not os.path.exists(m):
+            return False
+        return True
+
 
 
 
@@ -101,10 +121,11 @@ parser.add_argument("-vol", type=int, nargs='+')
 parser.add_argument("-m", type=int, nargs='+')
 args = parser.parse_args()
 if args.vol is not None and len(args.vol) == 1:
-    for i in xrange(33,788):
+    for i in xrange(85,788):
         gevent.spawn(luoo.get_song_list(i)).join()
-
 elif args.m is not None and len(args.vol) == 1:
-    pass
+    vol = args.vol[0]
+    music = args.m[0]
+    luoo.get_song(vol, music)
 
 # luoo.get_musics()
