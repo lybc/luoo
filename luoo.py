@@ -5,9 +5,9 @@ import json
 import argparse
 import os
 import sys
-from gevent import monkey; monkey.patch_socket()
-import gevent
+import threading
 import logging
+from tqdm import tqdm
 
 
 class luoo:
@@ -80,8 +80,8 @@ class luoo:
         else:
             os.chdir(mp3_dir)
         print(u"正在下载第{v_num}期. {v_title}".format(v_num=vol_num, v_title=vol_title))
-        for music in musics:
-            author = music.find_next_sibling("span",class_="artist").get_text()
+        for music in tqdm(musics):
+            # author = music.find_next_sibling("span",class_="artist").get_text()
             music_name = music.get_text()
             music_num = music_name.split(".")[0]
             mp3_url = self.MP3_URL.format(vol=v, music=music_num)
@@ -90,10 +90,9 @@ class luoo:
                 if r.status_code == 404:
                     mp3_url = self.MP3_URL.format(vol=v, music=int(music_num))
                     r = requests.get(mp3_url, stream=True)
-            except e:
-                logging.warning("error: {}".format(music_name))
+            except:
+                logging.warning("error: {} lost".format(music_name))
                 continue
-            print(u"正在下载: {} --- {}".format(music_num, r.status_code))
             r.encoding = "utf-8"
             with open(self.MUSIC_NAME.format(name=music_num), "wb") as fd:
                 fd.write(r.content)
@@ -111,21 +110,22 @@ class luoo:
             return False
         return True
 
-
-
-
-
 luoo = luoo()
 parser = argparse.ArgumentParser()
 parser.add_argument("-vol", type=int, nargs='+')
 parser.add_argument("-m", type=int, nargs='+')
 args = parser.parse_args()
+threads = []
 if args.vol is not None and len(args.vol) == 1:
-    for i in xrange(85,788):
-        gevent.spawn(luoo.get_song_list(i)).join()
+    for i in xrange(args.vol[0],788):
+        threads.append(threading.Thread(target=luoo.get_song_list(i)))
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+        print(threading.currentThread().getName())
+
 elif args.m is not None and len(args.vol) == 1:
     vol = args.vol[0]
     music = args.m[0]
     luoo.get_song(vol, music)
-
-# luoo.get_musics()
